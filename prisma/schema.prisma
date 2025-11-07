@@ -1,0 +1,64 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  name      String
+  rounds    Int      @default(3) // configurable
+  code      String   @unique // pour rejoindre
+  createdAt DateTime @default(now())
+  users     User[]
+  items     Item[]
+  orders    Order[]
+}
+
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  displayName String
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  orders      Order[]
+  email       String
+  password    String
+}
+
+model Item {
+  id        String   @id @default(cuid())
+  label     String
+  category  String?
+  active    Boolean  @default(true)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  orderLines OrderLine[]
+  @@index([sessionId, active])
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  round     Int
+  createdAt DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines     OrderLine[]
+  @@unique([sessionId, userId, round]) // un bon garde‑fou
+  @@index([sessionId, round])
+}
+
+model OrderLine {
+  id          String  @id @default(cuid())
+  orderId     String
+  itemId      String?
+  customLabel String? // Support d’un label libre si pas au catalogue:
+  qty         Int
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item        Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+}

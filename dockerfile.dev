@@ -1,0 +1,40 @@
+# Dockerfile.dev
+FROM node:20-alpine
+
+# 1) Dépendances système utiles pour Prisma sur Alpine + hot-reload
+RUN apk add --no-cache openssl libc6-compat
+
+# 2) Dossier de travail
+WORKDIR /app
+
+# 3) Variables utiles au watch dans un conteneur (Mac/Windows)
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
+# 4) Copie des manifests pour tirer parti du cache Docker
+COPY package*.json ./
+
+# 5) Installation des deps (garde les devDependencies pour start:dev)
+#    npm ci échoue si pas de package-lock.json -> sinon, fallback npm install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# 6) Prisma: copier le schéma puis générer le client
+COPY prisma ./prisma
+RUN npx prisma generate || true
+
+# 7) Config Nest/TS nécessaire au start:dev
+COPY nest-cli.json ./
+COPY tsconfig*.json ./
+
+# 8) Code app
+COPY src ./src
+
+# 9) (Optionnel) sécurité: exécuter en user non-root
+# RUN addgroup -S nodejs && adduser -S node -G nodejs
+# USER node
+
+EXPOSE 3000
+
+# 10) Lancer Nest en mode dev (hot-reload)
+CMD ["npm", "run", "start:dev"]
