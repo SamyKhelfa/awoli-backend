@@ -1,13 +1,16 @@
-import { Module } from '@nestjs/common';
-import { AuthController } from '../auth/auth.controller';
-import { AuthService } from '../auth/auth.service';
-import { JwtModule } from '@nestjs/jwt';
-import { PrismaService } from './prisma.service';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 
-@Module({
-  imports: [JwtModule.register({})],
-  controllers: [AuthController],
-  providers: [AuthService],
-  exports: [AuthService],
-})
-export class PrismaModule {}
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+}
